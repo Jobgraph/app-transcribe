@@ -39,7 +39,7 @@ export default function App() {
 
   if (!config) return null;
 
-  if (!config.isConfigured) {
+  if (config.deploymentId !== 'local' && !config.isConfigured) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="text-center max-w-md space-y-4">

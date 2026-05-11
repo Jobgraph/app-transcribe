@@ -16,7 +16,7 @@ describe('App (transcribe)', () => {
 
   it('shows not-configured message when isConfigured is false', async () => {
     mockLoadConfig.mockResolvedValue({
-      deploymentId: 'local', appName: 'Transcribe', orgName: 'Test', brandColour: '#6366f1',
+      deploymentId: 'test-id', appName: 'Transcribe', orgName: 'Test', brandColour: '#6366f1',
       logoUrl: null, systemPrompt: '', capabilities: [], isConfigured: false,
     })
     render(<App />)
@@ -55,7 +55,7 @@ describe('App (transcribe)', () => {
       deploymentId: 'test-id', appName: 'Transcribe', orgName: 'Test', brandColour: '#6366f1',
       logoUrl: null, systemPrompt: '', capabilities: [], isConfigured: true,
     })
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         structured: {
