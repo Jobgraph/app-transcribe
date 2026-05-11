@@ -24,11 +24,19 @@ const MOCK_RESPONSE: Structured = {
 };
 
 function toMarkdown(data: Structured): string {
-  let md = `## Summary\n${data.summary}\n\n## Key Decisions\n`;
-  data.decisions.forEach((d) => (md += `- ${d}\n`));
-  md += `\n## Action Items\n| What | Who | By |\n|------|-----|----|\n`;
-  data.actions.forEach((a) => (md += `| ${a.what} | ${a.who} | ${a.by} |\n`));
-  md += `\n## Follow-up Email\n${data.followUpEmail}\n`;
+  let md = `## Summary\n\n${data.summary || 'N/A'}\n\n## Key Decisions\n\n`;
+  if (data.decisions?.length) {
+    data.decisions.forEach((d) => (md += `- ${d}\n`));
+  } else {
+    md += '_None identified._\n';
+  }
+  md += `\n## Action Items\n\n| What | Who | By |\n|------|-----|----|\n`;
+  if (data.actions?.length) {
+    data.actions.forEach((a) => (md += `| ${a.what} | ${a.who} | ${a.by} |\n`));
+  } else {
+    md += '| — | — | — |\n';
+  }
+  md += `\n## Follow-up Email\n\n${data.followUpEmail || 'N/A'}\n`;
   return md;
 }
 
@@ -38,6 +46,7 @@ export default function App() {
   const [result, setResult] = useState<Structured | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     loadConfig().then(setConfig);
@@ -48,6 +57,7 @@ export default function App() {
   async function process() {
     setLoading(true);
     setResult(null);
+    setError('');
     try {
       if (config!.deploymentId === 'local') {
         await new Promise((r) => setTimeout(r, 1500));
@@ -61,11 +71,12 @@ export default function App() {
             body: JSON.stringify({ input: transcript, type: 'transcribe' }),
           }
         );
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
         const { structured } = await res.json();
         setResult(structured);
       }
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -117,6 +128,10 @@ export default function App() {
           )}
         </button>
 
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400">{error}</div>
+        )}
+
         {result && (
           <div className="space-y-6 pt-4">
             {/* Summary */}
@@ -129,7 +144,7 @@ export default function App() {
             <section className="bg-white/5 border border-white/10 rounded-lg p-5">
               <h2 className="text-lg font-semibold mb-2">Key Decisions</h2>
               <ul className="list-disc list-inside space-y-1 text-white/80">
-                {result.decisions.map((d, i) => (
+                {(result.decisions ?? []).map((d, i) => (
                   <li key={i}>{d}</li>
                 ))}
               </ul>
@@ -147,7 +162,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.actions.map((a, i) => (
+                  {(result.actions ?? []).map((a, i) => (
                     <tr key={i} className="border-b border-white/5">
                       <td className="py-2 text-white/80">{a.what}</td>
                       <td className="py-2 text-white/80">{a.who}</td>
