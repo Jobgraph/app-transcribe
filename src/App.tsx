@@ -66,6 +66,7 @@ export default function App() {
       );
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const { structured } = await res.json();
+      if (!structured) throw new Error('No structured data returned.');
       setResult(structured);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
