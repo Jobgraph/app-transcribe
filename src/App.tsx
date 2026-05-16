@@ -13,7 +13,7 @@ import { FileText } from 'lucide-react';
 export default function App() {
   const themeCtx = useThemeProvider();
   const { config, loading: configLoading } = useConfig();
-  const hist = useHistory();
+  const { entries, active, activeId, setActiveId, add, complete, fail, remove, clearAll } = useHistory();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,22 +22,22 @@ export default function App() {
     setError(null);
     setProcessing(true);
 
-    const entry = hist.add(text);
+    const entry = add(text);
 
     const res = await processTranscript(config.deploymentId, text);
     if (res.ok) {
-      hist.complete(entry.id, res.data);
+      complete(entry.id, res.data);
     } else {
-      hist.fail(entry.id, res.error.message);
+      fail(entry.id, res.error.message);
       setError(res.error.message);
     }
     setProcessing(false);
-  }, [config, hist]);
+  }, [config, add, complete, fail]);
 
   const handleNew = useCallback(() => {
-    hist.setActiveId(null);
+    setActiveId(null);
     setError(null);
-  }, [hist]);
+  }, [setActiveId]);
 
   // Config loading screen
   if (configLoading || !config) {
@@ -48,7 +48,7 @@ export default function App() {
     );
   }
 
-  const activeEntry = hist.active;
+  const activeEntry = active;
   const showInput = !activeEntry || activeEntry.status === 'error';
   const showResult = activeEntry?.status === 'complete' && activeEntry.result;
   const showSkeleton = processing || activeEntry?.status === 'pending';
@@ -57,12 +57,12 @@ export default function App() {
     <ThemeContext value={themeCtx}>
       <AppShell
         config={config}
-        entries={hist.entries}
-        activeId={hist.activeId}
-        onSelectEntry={hist.setActiveId}
+        entries={entries}
+        activeId={activeId}
+        onSelectEntry={setActiveId}
         onNewEntry={handleNew}
-        onDeleteEntry={hist.remove}
-        onClearAll={hist.clearAll}
+        onDeleteEntry={remove}
+        onClearAll={clearAll}
       >
         <div className="max-w-3xl mx-auto px-6 py-8">
           {/* Empty state */}
