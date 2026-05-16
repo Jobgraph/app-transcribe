@@ -17,15 +17,33 @@ export function AudioRecorder({ onRecorded, recordedBlob, onClear }: AudioRecord
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioUrlRef = useRef<string | null>(null);
+  const barDurations = useRef(Array.from({ length: 20 }, () => 0.6 + Math.random() * 0.6));
 
-  // Clean up object URLs
+  // Manage audio object URL lifecycle
+  useEffect(() => {
+    if (recordedBlob) {
+      const url = URL.createObjectURL(recordedBlob);
+      setAudioUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setAudioUrl(null);
+    }
+  }, [recordedBlob]);
+
+  // Stop recording and release mic stream on unmount
   useEffect(() => {
     return () => {
-      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
     };
   }, []);
 
@@ -33,6 +51,7 @@ export function AudioRecorder({ onRecorded, recordedBlob, onClear }: AudioRecord
     try {
       setPermissionDenied(false);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
@@ -71,25 +90,18 @@ export function AudioRecorder({ onRecorded, recordedBlob, onClear }: AudioRecord
   }, []);
 
   const handleClear = useCallback(() => {
-    if (audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current);
-      audioUrlRef.current = null;
-    }
     setElapsed(0);
     onClear();
   }, [onClear]);
 
   // If we have a recorded blob, show playback
-  if (recordedBlob) {
-    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
-    audioUrlRef.current = URL.createObjectURL(recordedBlob);
-
+  if (recordedBlob && audioUrl) {
     return (
       <div className="flex flex-col items-center gap-4 py-6">
         <div className="flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl w-full max-w-md">
           <div className="flex-1">
             <p className="text-xs text-white/40 mb-1.5">Recorded audio ({formatTime(elapsed)})</p>
-            <audio controls src={audioUrlRef.current} className="w-full h-8" />
+            <audio controls src={audioUrl} className="w-full h-8" />
           </div>
         </div>
         <button
@@ -116,7 +128,7 @@ export function AudioRecorder({ onRecorded, recordedBlob, onClear }: AudioRecord
               style={{
                 height: '100%',
                 animationDelay: `${i * 0.05}s`,
-                animationDuration: `${0.6 + Math.random() * 0.6}s`,
+                animationDuration: `${barDurations.current[i]}s`,
               }}
             />
           ))}

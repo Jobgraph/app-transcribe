@@ -75,14 +75,28 @@ export default function App() {
     setResult(null);
     setError('');
     try {
-      const res = await fetch(
-        `https://app.jobgraph.com/api/apps/${config!.deploymentId}/process`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ input: transcript || '[audio transcription]', type: 'transcribe' }),
-        }
-      );
+      const audioBlob = mode === 'record' ? recordedBlob : mode === 'upload' ? uploadedFile : null;
+
+      let res: Response;
+      if (isAudioMode && audioBlob && config!.deploymentId !== 'local') {
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('type', 'transcribe');
+        res = await fetch(
+          `https://app.jobgraph.com/api/apps/${config!.deploymentId}/process`,
+          { method: 'POST', body: formData },
+        );
+      } else {
+        res = await fetch(
+          `https://app.jobgraph.com/api/apps/${config!.deploymentId}/process`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input: transcript || '[audio transcription]', type: 'transcribe' }),
+          },
+        );
+      }
+
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const { structured } = await res.json();
       if (!structured) throw new Error('No structured data returned.');

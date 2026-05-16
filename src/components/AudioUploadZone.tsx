@@ -1,4 +1,4 @@
-import { useState, useRef, type DragEvent } from 'react';
+import { useState, useRef, useEffect, type DragEvent } from 'react';
 import { Upload, X } from 'lucide-react';
 
 const AUDIO_ACCEPT = '.mp3,.wav,.m4a,.webm,.ogg';
@@ -13,7 +13,19 @@ interface AudioUploadZoneProps {
 export function AudioUploadZone({ onFile, uploadedFile, onClear }: AudioUploadZoneProps) {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Manage audio object URL lifecycle
+  useEffect(() => {
+    if (uploadedFile) {
+      const url = URL.createObjectURL(uploadedFile);
+      setAudioUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setAudioUrl(null);
+    }
+  }, [uploadedFile]);
 
   function validateAndSet(file: File) {
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -35,8 +47,7 @@ export function AudioUploadZone({ onFile, uploadedFile, onClear }: AudioUploadZo
   const onDragOver = (e: DragEvent) => { e.preventDefault(); setDragging(true); };
   const onDragLeave = () => setDragging(false);
 
-  if (uploadedFile) {
-    const url = URL.createObjectURL(uploadedFile);
+  if (uploadedFile && audioUrl) {
     const sizeMB = (uploadedFile.size / (1024 * 1024)).toFixed(1);
 
     return (
@@ -47,14 +58,14 @@ export function AudioUploadZone({ onFile, uploadedFile, onClear }: AudioUploadZo
             <div className="flex items-center gap-2">
               <span className="text-xs text-white/40">{sizeMB} MB</span>
               <button
-                onClick={() => { URL.revokeObjectURL(url); onClear(); }}
+                onClick={onClear}
                 className="text-white/40 hover:text-white/80 transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
-          <audio controls src={url} className="w-full h-8" />
+          <audio controls src={audioUrl} className="w-full h-8" />
         </div>
       </div>
     );
