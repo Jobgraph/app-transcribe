@@ -13,6 +13,20 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
+/** Try supported mimeTypes in order of preference; return the first supported one (or undefined to let the browser choose). */
+function getSupportedMimeType(): string | undefined {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg',
+  ];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return undefined;
+}
+
 export function AudioRecorder({ onRecorded, recordedBlob, onClear }: AudioRecorderProps) {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -21,6 +35,7 @@ export function AudioRecorder({ onRecorded, recordedBlob, onClear }: AudioRecord
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const selectedMimeTypeRef = useRef<string | undefined>(undefined);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const barDurations = useRef(Array.from({ length: 20 }, () => 0.6 + Math.random() * 0.6));
 
@@ -52,9 +67,14 @@ export function AudioRecorder({ onRecorded, recordedBlob, onClear }: AudioRecord
       setPermissionDenied(false);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      const mimeType = getSupportedMimeType();
+      selectedMimeTypeRef.current = mimeType;
+
       let mediaRecorder: MediaRecorder;
       try {
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        mediaRecorder = mimeType
+          ? new MediaRecorder(stream, { mimeType })
+          : new MediaRecorder(stream);
       } catch (err) {
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -68,7 +88,8 @@ export function AudioRecorder({ onRecorded, recordedBlob, onClear }: AudioRecord
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const blobType = selectedMimeTypeRef.current ?? 'audio/webm';
+        const blob = new Blob(chunksRef.current, { type: blobType });
         stream.getTracks().forEach((t) => t.stop());
         onRecorded(blob);
       };

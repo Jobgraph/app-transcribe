@@ -80,7 +80,13 @@ export default function App() {
       let res: Response;
       if (isAudioMode && audioBlob && config!.deploymentId !== 'local') {
         const formData = new FormData();
-        const filename = mode === 'upload' && uploadedFile ? uploadedFile.name : 'recording.webm';
+        let filename: string;
+        if (mode === 'upload' && uploadedFile) {
+          filename = uploadedFile.name;
+        } else {
+          const ext = audioBlob!.type.includes('mp4') ? 'mp4' : audioBlob!.type.includes('ogg') ? 'ogg' : 'webm';
+          filename = `recording.${ext}`;
+        }
         formData.append('audio', audioBlob, filename);
         formData.append('type', 'transcribe');
         res = await fetch(
@@ -202,9 +208,15 @@ export default function App() {
             <div className="flex justify-center">
               <button
                 onClick={process}
-                disabled={!canSubmit}
-                style={{ backgroundColor: canSubmit ? config.brandColour : undefined }}
-                className="px-8 py-3 rounded-xl font-medium text-white disabled:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed hover:opacity-90 transition-all text-sm"
+                disabled={!canSubmit && !loading}
+                style={{ backgroundColor: (canSubmit || loading) ? config.brandColour : undefined }}
+                className={`px-8 py-3 rounded-xl font-medium text-white transition-all text-sm ${
+                  loading
+                    ? 'cursor-wait opacity-90'
+                    : canSubmit
+                      ? 'hover:opacity-90'
+                      : 'disabled:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed'
+                }`}
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
