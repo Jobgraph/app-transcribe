@@ -9,6 +9,11 @@ vi.mock('./config', () => ({
 import { loadConfig } from './config'
 const mockLoadConfig = vi.mocked(loadConfig)
 
+const CONFIGURED = {
+  deploymentId: 'test-id', appName: 'Transcribe', orgName: 'Test', brandColour: '#6366f1',
+  logoUrl: null, systemPrompt: '', capabilities: [], isConfigured: true,
+}
+
 describe('App (transcribe)', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -16,8 +21,7 @@ describe('App (transcribe)', () => {
 
   it('shows not-configured message when isConfigured is false', async () => {
     mockLoadConfig.mockResolvedValue({
-      deploymentId: 'test-id', appName: 'Transcribe', orgName: 'Test', brandColour: '#6366f1',
-      logoUrl: null, systemPrompt: '', capabilities: [], isConfigured: false,
+      ...CONFIGURED, isConfigured: false,
     })
     render(<App />)
     await waitFor(() => {
@@ -25,36 +29,42 @@ describe('App (transcribe)', () => {
     })
   })
 
-  it('renders textarea and disabled button when configured', async () => {
-    mockLoadConfig.mockResolvedValue({
-      deploymentId: 'test-id', appName: 'Transcribe', orgName: 'Test', brandColour: '#6366f1',
-      logoUrl: null, systemPrompt: '', capabilities: [], isConfigured: true,
-    })
+  it('renders mode tabs defaulting to Record', async () => {
+    mockLoadConfig.mockResolvedValue(CONFIGURED)
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Paste your meeting transcript here...')).toBeInTheDocument()
+      expect(screen.getByText('Record')).toBeInTheDocument()
+      expect(screen.getByText('Upload')).toBeInTheDocument()
+      expect(screen.getByText('Paste')).toBeInTheDocument()
     })
+    // Record mode shows "Tap to start recording"
+    expect(screen.getByText('Tap to start recording')).toBeInTheDocument()
+  })
+
+  it('renders textarea and disabled button in paste mode', async () => {
+    mockLoadConfig.mockResolvedValue(CONFIGURED)
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText('Paste')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByText('Paste'))
+    expect(screen.getByPlaceholderText('Paste your meeting transcript here...')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Process transcript' })).toBeDisabled()
   })
 
   it('enables button when textarea has content', async () => {
-    mockLoadConfig.mockResolvedValue({
-      deploymentId: 'test-id', appName: 'Transcribe', orgName: 'Test', brandColour: '#6366f1',
-      logoUrl: null, systemPrompt: '', capabilities: [], isConfigured: true,
-    })
+    mockLoadConfig.mockResolvedValue(CONFIGURED)
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Paste your meeting transcript here...')).toBeInTheDocument()
+      expect(screen.getByText('Paste')).toBeInTheDocument()
     })
+    fireEvent.click(screen.getByText('Paste'))
     fireEvent.change(screen.getByPlaceholderText('Paste your meeting transcript here...'), { target: { value: 'Meeting notes...' } })
     expect(screen.getByRole('button', { name: 'Process transcript' })).not.toBeDisabled()
   })
 
   it('shows results after successful API call', async () => {
-    mockLoadConfig.mockResolvedValue({
-      deploymentId: 'test-id', appName: 'Transcribe', orgName: 'Test', brandColour: '#6366f1',
-      logoUrl: null, systemPrompt: '', capabilities: [], isConfigured: true,
-    })
+    mockLoadConfig.mockResolvedValue(CONFIGURED)
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -69,8 +79,9 @@ describe('App (transcribe)', () => {
 
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Paste your meeting transcript here...')).toBeInTheDocument()
+      expect(screen.getByText('Paste')).toBeInTheDocument()
     })
+    fireEvent.click(screen.getByText('Paste'))
     fireEvent.change(screen.getByPlaceholderText('Paste your meeting transcript here...'), { target: { value: 'Meeting notes' } })
     fireEvent.click(screen.getByRole('button', { name: 'Process transcript' }))
 
@@ -79,5 +90,15 @@ describe('App (transcribe)', () => {
     })
     expect(screen.getByText('Decision 1')).toBeInTheDocument()
     expect(screen.getByText('Task 1')).toBeInTheDocument()
+  })
+
+  it('shows Transcribe button in record mode', async () => {
+    mockLoadConfig.mockResolvedValue(CONFIGURED)
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText('Tap to start recording')).toBeInTheDocument()
+    })
+    // The submit button says "Transcribe" in audio modes
+    expect(screen.getByRole('button', { name: 'Transcribe' })).toBeDisabled()
   })
 })

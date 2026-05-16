@@ -1,3 +1,20 @@
 @import "tailwindcss";
 :root { color-scheme: dark; }
 body { background: #0a0a0a; color: #fafafa; font-family: system-ui, sans-serif; }
+
+/* Recording pulse animation */
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 0; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+@keyframes waveform-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+.animate-waveform-bar {
+  animation: waveform-bar 0.8s ease-in-out infinite;
+}
