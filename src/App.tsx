@@ -8,27 +8,20 @@ interface Structured {
   followUpEmail: string;
 }
 
-const MOCK_RESPONSE: Structured = {
-  summary: 'The team discussed Q2 priorities, agreed on the new pricing model, and assigned ownership for the launch checklist.',
-  decisions: [
-    'Move to usage-based pricing starting June 1',
-    'Deprecate the legacy dashboard by end of Q2',
-    'Hire two additional engineers for the platform team',
-  ],
-  actions: [
-    { what: 'Draft pricing page copy', who: 'Sarah', by: '2024-05-15' },
-    { what: 'Set up usage metering pipeline', who: 'Dev team', by: '2024-05-20' },
-    { what: 'Send deprecation notice to legacy users', who: 'Mark', by: '2024-05-10' },
-  ],
-  followUpEmail: `Hi team,\n\nThanks for a productive session. Here's a quick recap:\n\n- We're moving to usage-based pricing from June 1\n- Legacy dashboard will be deprecated by end of Q2\n- Two new engineers joining the platform team\n\nPlease check the action items assigned to you and flag any blockers by EOD Friday.\n\nBest,\n[Your name]`,
-};
-
 function toMarkdown(data: Structured): string {
-  let md = `## Summary\n${data.summary}\n\n## Key Decisions\n`;
-  data.decisions.forEach((d) => (md += `- ${d}\n`));
-  md += `\n## Action Items\n| What | Who | By |\n|------|-----|----|\n`;
-  data.actions.forEach((a) => (md += `| ${a.what} | ${a.who} | ${a.by} |\n`));
-  md += `\n## Follow-up Email\n${data.followUpEmail}\n`;
+  let md = `## Summary\n\n${data.summary || 'N/A'}\n\n## Key Decisions\n\n`;
+  if (data.decisions?.length) {
+    data.decisions.forEach((d) => (md += `- ${d}\n`));
+  } else {
+    md += '_None identified._\n';
+  }
+  md += `\n## Action Items\n\n| What | Who | By |\n|------|-----|----|\n`;
+  if (data.actions?.length) {
+    data.actions.forEach((a) => (md += `| ${a.what} | ${a.who} | ${a.by} |\n`));
+  } else {
+    md += '| — | — | — |\n';
+  }
+  md += `\n## Follow-up Email\n\n${data.followUpEmail || 'N/A'}\n`;
   return md;
 }
 
@@ -38,6 +31,7 @@ export default function App() {
   const [result, setResult] = useState<Structured | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     loadConfig().then(setConfig);
@@ -45,27 +39,37 @@ export default function App() {
 
   if (!config) return null;
 
+  if (!config.isConfigured) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6">
+        <div className="text-center max-w-md space-y-4">
+          <h1 className="text-2xl font-semibold">{config.appName}</h1>
+          <p className="text-white/60">This app is not configured. Deploy it from Jobgraph to get started.</p>
+          <a href="https://app.jobgraph.com" className="inline-block px-4 py-2 bg-indigo-600 rounded-lg text-white hover:bg-indigo-500 transition-colors">Go to Jobgraph</a>
+        </div>
+      </div>
+    );
+  }
+
   async function process() {
     setLoading(true);
     setResult(null);
+    setError('');
     try {
-      if (config!.deploymentId === 'local') {
-        await new Promise((r) => setTimeout(r, 1500));
-        setResult(MOCK_RESPONSE);
-      } else {
-        const res = await fetch(
-          `https://app.jobgraph.com/api/apps/${config!.deploymentId}/process`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ input: transcript, type: 'transcribe' }),
-          }
-        );
-        const { structured } = await res.json();
-        setResult(structured);
-      }
+      const res = await fetch(
+        `https://app.jobgraph.com/api/apps/${config!.deploymentId}/process`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: transcript, type: 'transcribe' }),
+        }
+      );
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const { structured } = await res.json();
+      if (!structured) throw new Error('No structured data returned.');
+      setResult(structured);
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -80,7 +84,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
       <header className="border-b border-white/10 px-6 py-4 flex items-center gap-3">
         {config.logoUrl && (
           <img src={config.logoUrl} alt="" className="h-8 w-8 rounded" />
@@ -89,7 +92,6 @@ export default function App() {
         <span className="text-sm text-white/50">{config.orgName}</span>
       </header>
 
-      {/* Main */}
       <main className="flex-1 max-w-3xl w-full mx-auto px-6 py-8 space-y-6">
         <textarea
           value={transcript}
@@ -117,25 +119,26 @@ export default function App() {
           )}
         </button>
 
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400">{error}</div>
+        )}
+
         {result && (
           <div className="space-y-6 pt-4">
-            {/* Summary */}
             <section className="bg-white/5 border border-white/10 rounded-lg p-5">
               <h2 className="text-lg font-semibold mb-2">Summary</h2>
               <p className="text-white/80">{result.summary}</p>
             </section>
 
-            {/* Decisions */}
             <section className="bg-white/5 border border-white/10 rounded-lg p-5">
               <h2 className="text-lg font-semibold mb-2">Key Decisions</h2>
               <ul className="list-disc list-inside space-y-1 text-white/80">
-                {result.decisions.map((d, i) => (
+                {(result.decisions ?? []).map((d, i) => (
                   <li key={i}>{d}</li>
                 ))}
               </ul>
             </section>
 
-            {/* Actions */}
             <section className="bg-white/5 border border-white/10 rounded-lg p-5">
               <h2 className="text-lg font-semibold mb-2">Action Items</h2>
               <table className="w-full text-sm">
@@ -147,7 +150,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.actions.map((a, i) => (
+                  {(result.actions ?? []).map((a, i) => (
                     <tr key={i} className="border-b border-white/5">
                       <td className="py-2 text-white/80">{a.what}</td>
                       <td className="py-2 text-white/80">{a.who}</td>
@@ -158,7 +161,6 @@ export default function App() {
               </table>
             </section>
 
-            {/* Follow-up email */}
             <section className="bg-white/5 border border-white/10 rounded-lg p-5">
               <h2 className="text-lg font-semibold mb-2">Follow-up Email</h2>
               <textarea
