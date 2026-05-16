@@ -51,9 +51,6 @@ export function failEntry(id: string, errorMessage: string) {
   updateEntry(id, { status: 'error', errorMessage });
 }
 
-export function getEntry(id: string): HistoryEntry | undefined {
-  return read().find((e) => e.id === id);
-}
 
 export function deleteEntry(id: string) {
   write(read().filter((e) => e.id !== id));

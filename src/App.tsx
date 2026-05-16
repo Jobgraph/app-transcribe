@@ -24,19 +24,23 @@ export default function App() {
 
     const entry = add(text);
 
-    const res = await processTranscript(config.deploymentId, text);
-    if (res.ok) {
-      complete(entry.id, res.data);
-    } else {
-      fail(entry.id, res.error.message);
-      setError(res.error.message);
+    try {
+      const res = await processTranscript(config.deploymentId, text);
+      if (res.ok) {
+        complete(entry.id, res.data);
+      } else {
+        fail(entry.id, res.error.message);
+        setError(res.error.message);
+      }
+    } finally {
+      setProcessing(false);
     }
-    setProcessing(false);
   }, [config, add, complete, fail]);
 
   const handleNew = useCallback(() => {
     setActiveId(null);
     setError(null);
+    setProcessing(false);
   }, [setActiveId]);
 
   // Config loading screen

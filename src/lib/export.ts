@@ -18,14 +18,6 @@ export async function copyAsMarkdown(data: TranscriptResult): Promise<boolean> {
   }
 }
 
-export async function copyAsText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export function downloadMarkdown(data: TranscriptResult, filename = 'transcript-summary.md') {
   const blob = new Blob([toMarkdown(data)], { type: 'text/markdown' });
