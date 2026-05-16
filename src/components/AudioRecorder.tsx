@@ -52,7 +52,14 @@ export function AudioRecorder({ onRecorded, recordedBlob, onClear }: AudioRecord
       setPermissionDenied(false);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      } catch (err) {
+        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        throw err;
+      }
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 

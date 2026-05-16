@@ -80,7 +80,8 @@ export default function App() {
       let res: Response;
       if (isAudioMode && audioBlob && config!.deploymentId !== 'local') {
         const formData = new FormData();
-        formData.append('audio', audioBlob, 'recording.webm');
+        const filename = mode === 'upload' && uploadedFile ? uploadedFile.name : 'recording.webm';
+        formData.append('audio', audioBlob, filename);
         formData.append('type', 'transcribe');
         res = await fetch(
           `https://app.jobgraph.com/api/apps/${config!.deploymentId}/process`,
