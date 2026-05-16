@@ -31,9 +31,9 @@ export async function loadConfig(): Promise<AppConfig> {
   if (!id) return DEFAULTS;
   try {
     const res = await fetch(`https://app.jobgraph.com/api/apps/${id}/config`);
-    if (!res.ok) return { ...DEFAULTS, deploymentId: id };
+    if (!res.ok) return DEFAULTS;
     return { ...DEFAULTS, ...(await res.json()), deploymentId: id, isConfigured: true };
   } catch {
-    return { ...DEFAULTS, deploymentId: id };
+    return DEFAULTS;
   }
 }
