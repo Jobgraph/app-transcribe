@@ -77,6 +77,9 @@ export default function App() {
     try {
       const audioBlob = mode === 'record' ? recordedBlob : mode === 'upload' ? uploadedFile : null;
 
+      const baseUrl = (window as any).__JOBGRAPH_CONFIG__ ? '' : 'https://app.jobgraph.com';
+      const processUrl = `${baseUrl}/api/apps/${config!.deploymentId}/process`;
+
       let res: Response;
       if (isAudioMode && audioBlob && config!.deploymentId !== 'local') {
         const formData = new FormData();
@@ -89,19 +92,13 @@ export default function App() {
         }
         formData.append('audio', audioBlob, filename);
         formData.append('type', 'transcribe');
-        res = await fetch(
-          `https://app.jobgraph.com/api/apps/${config!.deploymentId}/process`,
-          { method: 'POST', body: formData },
-        );
+        res = await fetch(processUrl, { method: 'POST', body: formData });
       } else {
-        res = await fetch(
-          `https://app.jobgraph.com/api/apps/${config!.deploymentId}/process`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ input: transcript || '[audio transcription]', type: 'transcribe' }),
-          },
-        );
+        res = await fetch(processUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: transcript || '[audio transcription]', type: 'transcribe' }),
+        });
       }
 
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
